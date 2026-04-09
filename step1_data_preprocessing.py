@@ -31,11 +31,14 @@ print(df['label'].value_counts())
 legit_urls = df[df['label'] == 0]
 phishing_urls = df[df['label'] == 1]
 
-sample_size = 10000   # taking 10000 from each class
+sample_size = min(250000, len(legit_urls), len(phishing_urls))
 
 # take random samples to make dataset balanced
 legit_sample = legit_urls.sample(n=sample_size, random_state=42)
 phishing_sample = phishing_urls.sample(n=sample_size, random_state=42)
+
+print("Using sample size from each class:", sample_size)
+print("Total balanced rows:", sample_size * 2)
 
 # combine both samples and shuffle the data
 final_df = pd.concat([legit_sample, phishing_sample])
