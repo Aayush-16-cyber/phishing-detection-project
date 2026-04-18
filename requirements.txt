@@ -38,3 +38,4 @@ numpy
 scikit-learn
 tldextract
 gunicorn
+flask-cors
