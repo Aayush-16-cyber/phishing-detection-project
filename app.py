@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask_cors import CORS
 import joblib
 import re
 import tldextract
@@ -9,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = "supersecretkey123"
 
 model = joblib.load("model/phishing_model.pkl")
@@ -99,6 +101,49 @@ def extract_features(url):
 
     return pd.DataFrame([features])
 
+# ----------------------------
+# API SCAN FOR EXTENSION
+# ----------------------------
+@app.route("/api/scan", methods=["POST"])
+def api_scan():
+    try:
+        data = request.get_json()
+
+        if not data or "url" not in data:
+            return jsonify({
+                "result": "ERROR",
+                "message": "URL missing"
+            }), 400
+
+        url = data["url"].strip()
+
+        features = extract_features(url)
+
+        prediction = model.predict(features)[0]
+        probability = model.predict_proba(features)[0][1]
+
+        confidence = round(probability * 100, 2)
+
+        if prediction == 1:
+            result = "PHISHING"
+        else:
+            result = "SAFE"
+            confidence = round((1 - probability) * 100, 2)
+
+        risk = get_risk_level(result, confidence)
+
+        return jsonify({
+            "url": url,
+            "result": result,
+            "confidence": confidence,
+            "risk": risk
+        })
+
+    except Exception as e:
+        return jsonify({
+            "result": "ERROR",
+            "message": str(e)
+        }), 500
 
 # ----------------------------
 # PUBLIC HOME
@@ -404,4 +449,5 @@ if __name__ == "__main__":
 
     init_db()
 
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
